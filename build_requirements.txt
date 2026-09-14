@@ -1,0 +1,15 @@
+# Build requirements for the port-notes Jupyter Book.
+jupyter-book<2
+ipykernel
+
+# Imported by the notebooks.
+numpy
+scipy
+scikit-image@git+https://github.com/scikit-image/scikit-image@main
+pooch
+matplotlib
+opencv-python-headless
+pillow
+pandas
+tabulate
+cython
