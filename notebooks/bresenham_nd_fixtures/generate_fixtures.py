@@ -8,8 +8,8 @@ Writes:
 
 Needs the `bresenham-nd` build on ``sys.path`` (see ``--skimage-root``).
 External refs (ITK port, Zingl / raster_geometry) are pure Python and need
-no extra packages. Optional ``--rust-bin`` re-checks the 3-D Zingl field
-against a `line_drawing` Bresenham3d helper.
+no extra packages. Optional ``--zingl-bin`` re-checks the 3-D Zingl field
+against a compiled build of `zingl_line3d.c` (Zingl's own `plotLine3d`).
 
 Example::
 
@@ -84,10 +84,10 @@ def line2_factory(_line):
     return line2
 
 
-def rust_bin_line(rust_bin: Path):
-    def rust_line3d(p0, p1):
+def zingl_bin_line(zingl_bin: Path):
+    def zingl_line3d(p0, p1):
         out = subprocess.check_output(
-            [str(rust_bin), *[str(x) for x in p0], *[str(x) for x in p1]],
+            [str(zingl_bin), *[str(x) for x in p0], *[str(x) for x in p1]],
             text=True,
         )
         return [
@@ -96,7 +96,7 @@ def rust_bin_line(rust_bin: Path):
             if line
         ]
 
-    return rust_line3d
+    return zingl_line3d
 
 
 def corpora(rng: np.random.Generator):
@@ -167,10 +167,10 @@ def main(argv: list[str] | None = None) -> int:
         help="site-packages directory that contains _skimage2",
     )
     parser.add_argument(
-        "--rust-bin",
+        "--zingl-bin",
         type=Path,
         default=None,
-        help="Optional Bresenham3d CLI; if set, must match zingl_line on dim3",
+        help="Optional compiled zingl_line3d.c; if set, must match zingl_line on dim3",
     )
     parser.add_argument(
         "--seed",
@@ -183,9 +183,9 @@ def main(argv: list[str] | None = None) -> int:
     _bresenham_nd, _line = load_draw(args.skimage_root)
     ours = ours_factory(_bresenham_nd)
     line2 = line2_factory(_line)
-    rust_field = zingl_line
-    if args.rust_bin is not None:
-        rust_field = rust_bin_line(args.rust_bin)
+    zingl_field = zingl_line
+    if args.zingl_bin is not None:
+        zingl_field = zingl_bin_line(args.zingl_bin)
 
     pairs_2d, pairs_3d, pairs_4d = corpora(np.random.default_rng(args.seed))
 
@@ -199,7 +199,7 @@ def main(argv: list[str] | None = None) -> int:
         ("ours", ours),
         ("itk", itk_line),
         ("raster_geometry", raster_geometry_line),
-        ("rust_line_drawing", rust_field),
+        ("zingl_line3d", zingl_field),
     ]
     refs4 = [
         ("ours", ours),
@@ -207,13 +207,13 @@ def main(argv: list[str] | None = None) -> int:
         ("raster_geometry", raster_geometry_line),
     ]
 
-    if args.rust_bin is not None:
+    if args.zingl_bin is not None:
         miss = sum(
-            zingl_line(a, b) != rust_field(a, b) for a, b in pairs_3d
+            zingl_line(a, b) != zingl_field(a, b) for a, b in pairs_3d
         )
         if miss:
             raise SystemExit(
-                f"--rust-bin disagrees with zingl_line on {miss}/{len(pairs_3d)} "
+                f"--zingl-bin disagrees with zingl_line on {miss}/{len(pairs_3d)} "
                 "3-D segments"
             )
 
@@ -226,9 +226,9 @@ def main(argv: list[str] | None = None) -> int:
                 "vendored bresenham_line, endpoint=True "
                 "(pip package broken on NumPy 2)"
             ),
-            "rust": (
-                "line_drawing 1.0.1 Bresenham3d rule "
-                "(Python zingl_line; optional --rust-bin check)"
+            "zingl": (
+                "Zingl plotLine3d rule "
+                "(Python zingl_line; optional --zingl-bin check)"
             ),
             "ours": "_bresenham_nd in bresenham-nd worktree",
             "note": (

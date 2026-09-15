@@ -1,0 +1,26 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: skimage-workbooks
+Source: https://github.com/scikit-image/skimage-workbooks
+
+Files: *
+Copyright: 2026 scikit-image developers
+License: Unknown
+
+Files: notebooks/bresenham_nd_fixtures/zingl_line3d.c
+Copyright: 2016 Alois Zingl
+License: LicenseRef-zingl-bresenham
+Comment:
+ plotLine3d is copied verbatim from Alois Zingl's "The Beauty of
+ Bresenham's Algorithm"
+ (http://members.chello.at/~easyfilter/bresenham.c).  That page
+ carries a copyright notice but publishes no license grant, so this
+ file is excluded from the license declaration above.  The
+ setPixel/main CLI wrapper in the same was written for this
+ repository, but is left under the same restriction since the file is
+ not useful without plotLine3d.
+
+License: LicenseRef-zingl-bresenham
+ No license terms are published for this file's upstream source. Treat
+ it as all-rights-reserved pending clarification from the author; do not
+ assume the license declaration above covers it, and do not redistribute
+ it separately from this notice.

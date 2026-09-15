@@ -6,27 +6,38 @@
 # environment: their frontmatter asks for `kernelspec: name: python3`, which
 # means "whatever python3 kernel the executing Jupyter offers", so the
 # environment follows the caller and the caller is fixed here.
+#
+# MYST is the mystmd CLI (an npm package), resolved from PATH like PYTHON.
 
 PYTHON ?= python
+MYST ?= myst
+CC ?= gcc
 PIP_INSTALL_CMD ?= $(PYTHON) -m pip install
 BUILD_DIR = _build/html
-JL_DIR = _build/jl
+FIXTURES_DIR = notebooks/bresenham_nd_fixtures
+ZINGL_BIN = $(FIXTURES_DIR)/zingl_line3d
 
-.PHONY: help guard html book github clean rm-ipynb bresenham-fixtures
+.PHONY: help html book github clean rm-ipynb bresenham-fixtures kernel
 
 help:
-	@echo "make env       show the interpreter and kernels the notebooks will use"
-	@echo "make check     execute every notebook in the TOC, report errors"
-	@echo "make check NB=on_lines.md   execute just one"
-	@echo "make html      build the book, warnings as errors"
+	@echo "make html      build the site, warnings as errors"
 	@echo "make github    build and publish to GitHub Pages"
 	@echo "make clean     remove _build and the paired .ipynb files"
 	@echo "make bresenham-fixtures   regenerate bresenham_nd_fixtures/*.json"
 
-html:
+# Registers the "python3" kernelspec the notebooks ask for, pointing at
+# $(PYTHON); installing ipykernel does not register it on its own.
+kernel:
+	$(PYTHON) -m ipykernel install --user --name python3
+
+# The 3-D cross-check in bresenham_nd_cython.md shells out to this binary.
+$(ZINGL_BIN): $(FIXTURES_DIR)/zingl_line3d.c
+	$(CC) -O2 -o $@ $<
+
+html: kernel $(ZINGL_BIN)
 	# Check for ipynb files in source (should all be paired .md).
 	if compgen -G "*.ipynb" 2> /dev/null; then (echo "ipynb files" && exit 1); fi
-	$(PYTHON) -c "from jupyter_book.cli.main import main; main()" build -W .
+	$(MYST) build --html --strict --execute
 
 # `book` is an alias for `html`, kept because the notebooks refer to it.
 book: html
@@ -36,6 +47,7 @@ github: html
 
 clean: rm-ipynb
 	rm -rf _build
+	rm -f $(ZINGL_BIN)
 
 rm-ipynb:
 	rm -rf *.ipynb

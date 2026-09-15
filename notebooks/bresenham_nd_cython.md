@@ -16,8 +16,8 @@ kernelspec:
 
 `_bresenham_nd` (compiled locally from `bresenham_nd_local/_bresenham.pyx`) is
 the N-D form of scikit-image’s integer Bresenham. In 2-D it matches `_line`
-bit for bit. It does **not** always match ITK’s `BresenhamLine` or Rust’s
-`line_drawing::Bresenham3d`.
+bit for bit. It does **not** always match ITK’s `BresenhamLine` or Zingl’s
+published `plotLine3d`.
 
 This notebook settles *why*. The pixel counts agree (Chebyshev length); the
 paths diverge only on ties, and each library’s ties come from a different
@@ -86,12 +86,11 @@ def sk_line(start, stop):
     return list(zip(map(int, rr), map(int, cc)))
 
 
-def rust_nd(start, stop):
-    """Zingl / `line_drawing::Bresenham3d` style, any dimension.
+def zingl_nd(start, stop):
+    """Zingl's `plotLine3d` style, generalised to any dimension.
 
-    Sourced from http://members.chello.at/~easyfilter/bresenham.html via the
-    Rust `line_drawing` 1.0.1 crate. Same rule as `raster_geometry.bresenham_line`
-    (which matches the Rust 3-D iterator bit for bit on our 3-D corpus).
+    Sourced from http://members.chello.at/~easyfilter/bresenham.html. Same
+    rule as `raster_geometry.bresenham_line`.
     """
     start, stop = list(start), list(stop)
     ndim = len(start)
@@ -204,7 +203,7 @@ libraries draw five pixels; they disagree on which row sits at column 2.
 ```{code-cell} ipython3
 p, q = (0, 0), (1, 4)
 print("ours ", ours(p, q))
-print("rust ", rust_nd(p, q))
+print("zingl", zingl_nd(p, q))
 print("ITK  ", itk_line(p, q))
 print("line ", sk_line(p, q))
 ```
@@ -213,7 +212,7 @@ print("line ", sk_line(p, q))
 fig, axes = plt.subplots(1, 3, figsize=(8.4, 2.2))
 for ax, pix, color, name in (
     (axes[0], ours(p, q), C_OURS, "ours / skimage _line"),
-    (axes[1], rust_nd(p, q), C_OTHER, "Rust / Zingl style"),
+    (axes[1], zingl_nd(p, q), C_OTHER, "Zingl style"),
     (axes[2], itk_line(p, q), C_OTHER, "ITK port"),
 ):
     pixel_axes(ax, (3, 6), name)
@@ -223,8 +222,8 @@ fig.suptitle("same endpoints, same length, different tie at column 2", y=1.05)
 fig.tight_layout()
 ```
 
-`ours` matches `_line` (steps early at the half). The Zingl/Rust rule steps
-late. ITK lands on the same pixels as Rust here only because its float
+`ours` matches `_line` (steps early at the half). The Zingl rule steps
+late. ITK lands on the same pixels as Zingl here only because its float
 `LastIndex` is already distorted for this segment (`(1, 5)` instead of
 `(1, 4)`); when that distortion is absent, ITK matches ours instead
 (section 4).
@@ -252,10 +251,9 @@ The decision `error ≥ 0` is the cleared form of `y(k+1) ≥ m + 1/2` from
 `on_lines.md`: an exact half **steps early**. The major axis is not run
 through this test; it advances unconditionally.
 
-### Rust `Bresenham3d` (Zingl / easyfilter)
+### Zingl `plotLine3d` (easyfilter)
 
-From `line_drawing` 1.0.1, itself from
-[Zingl’s site](http://members.chello.at/~easyfilter/bresenham.html). Every
+From [Zingl’s site](http://members.chello.at/~easyfilter/bresenham.c). Every
 axis, including the major, shares one pattern:
 
 ```
@@ -303,7 +301,7 @@ hits the true endpoint. That is where ITK diverges from ours.
 
 +++
 
-## 3. Mechanism A — Rust: even major length
+## 3. Mechanism A — Zingl: even major length
 
 ```{code-cell} ipython3
 pairs_2d = [
@@ -321,8 +319,8 @@ even = [(a, b) for a, b in pairs_2d if major_length(a, b) % 2 == 0]
 odd = [(a, b) for a, b in pairs_2d if major_length(a, b) % 2 == 1]
 
 for label, group in (("D even", even), ("D odd", odd), ("all", pairs_2d)):
-    ok = sum(ours(a, b) == rust_nd(a, b) for a, b in group)
-    print(f"ours vs Rust-style, {label:>6}: {ok}/{len(group)} "
+    ok = sum(ours(a, b) == zingl_nd(a, b) for a, b in group)
+    print(f"ours vs Zingl-style, {label:>6}: {ok}/{len(group)} "
           f"({ok / len(group):.1%})")
 ```
 
@@ -334,7 +332,7 @@ odd `D` the two sequences are identical.
 D, d = 4, 1
 print("ours:  initial error = 2d - D =", 2 * d - D,
       "  step on first decision?", (2 * d - D) >= 0)
-print("rust:  initial err = D//2 =", D // 2)
+print("zingl: initial err = D//2 =", D // 2)
 print("       after err -= d:   ", D // 2 - d,
       "  step?", (D // 2 - d) < 0)
 ```
@@ -342,7 +340,7 @@ print("       after err -= d:   ", D // 2 - d,
 For `(0, 0) → (1, 4)`: `D = 4`, `d = 1`. Ours opens at
 `error = 2·1 − 4 = −2` and only steps the minor axis once `error` has climbed
 to a non-negative value — which, with the `≥ 0` rule, puts the halfway column
-on the **upper** row. Rust opens at `err = 2`, subtracts `d` to `1` (still
+on the **upper** row. Zingl opens at `err = 2`, subtracts `d` to `1` (still
 non-negative), and does **not** step yet — so the halfway column stays on the
 **lower** row. The figure in section 1 is that single tie, drawn.
 
@@ -421,12 +419,12 @@ print(f"{'comparison':<40}{'agree':>10}")
 rows = [
     ("ours vs skimage _line",
      sum(ours(a, b) == sk_line(a, b) for a, b in pairs_2d)),
-    ("ours vs Rust-style (all D)",
-     sum(ours(a, b) == rust_nd(a, b) for a, b in pairs_2d)),
-    ("ours vs Rust-style (D odd only)",
-     sum(ours(a, b) == rust_nd(a, b) for a, b in odd)),
-    ("ours vs Rust-style (D even only)",
-     sum(ours(a, b) == rust_nd(a, b) for a, b in even)),
+    ("ours vs Zingl-style (all D)",
+     sum(ours(a, b) == zingl_nd(a, b) for a, b in pairs_2d)),
+    ("ours vs Zingl-style (D odd only)",
+     sum(ours(a, b) == zingl_nd(a, b) for a, b in odd)),
+    ("ours vs Zingl-style (D even only)",
+     sum(ours(a, b) == zingl_nd(a, b) for a, b in even)),
     ("ours vs ITK (all)",
      sum(ours(a, b) == itk_line(a, b) for a, b in pairs_2d)),
     ("ours vs ITK (LastIndex intact)",
@@ -450,8 +448,8 @@ for name, ok in rows:
 ```
 
 ```{code-cell} ipython3
-# 3-D: Rust crate binary vs our port of the same rule.
-RUST = "/tmp/ldcheck/target/release/ldcheck"
+# 3-D: Zingl's own published C (compiled) vs our Python port of the same rule.
+ZINGL = _ROOT / "bresenham_nd_fixtures" / "zingl_line3d"
 rng = np.random.default_rng(0)
 grid3 = list(itertools.product(range(-2, 3), repeat=3))
 pairs_3d = [
@@ -462,9 +460,9 @@ pairs_3d = [
 pairs_3d = [((0, 0, 0), (2, 4, 8)), ((1, 2, 3), (-2, 5, 0))] + pairs_3d
 
 
-def rust_crate(a, b):
+def zingl_c(a, b):
     out = subprocess.check_output(
-        [RUST, *[str(x) for x in a], *[str(x) for x in b]], text=True
+        [str(ZINGL), *[str(x) for x in a], *[str(x) for x in b]], text=True
     )
     return [
         tuple(int(v) for v in line.split(","))
@@ -473,19 +471,20 @@ def rust_crate(a, b):
     ]
 
 
-ok_port = sum(rust_nd(a, b) == rust_crate(a, b) for a, b in pairs_3d)
-ok_ours = sum(ours(a, b) == rust_crate(a, b) for a, b in pairs_3d)
+ok_port = sum(zingl_nd(a, b) == zingl_c(a, b) for a, b in pairs_3d)
+ok_ours = sum(ours(a, b) == zingl_c(a, b) for a, b in pairs_3d)
 ok_itk = sum(ours(a, b) == itk_line(a, b) for a, b in pairs_3d)
 print(f"3-D corpus ({len(pairs_3d)} segments)")
-print(f"  rust_nd port == line_drawing crate : "
+print(f"  zingl_nd port == Zingl's C plotLine3d: "
       f"{ok_port}/{len(pairs_3d)} ({ok_port / len(pairs_3d):.1%})")
-print(f"  ours == line_drawing crate         : "
+print(f"  ours == Zingl's C plotLine3d         : "
       f"{ok_ours}/{len(pairs_3d)} ({ok_ours / len(pairs_3d):.1%})")
-print(f"  ours == ITK port                   : "
+print(f"  ours == ITK port                     : "
       f"{ok_itk}/{len(pairs_3d)} ({ok_itk / len(pairs_3d):.1%})")
 ```
 
-The Python Zingl port matches the Rust crate on every 3-D trial here, so the
+The Python Zingl port matches Zingl's own compiled `plotLine3d`
+(`bresenham_nd_fixtures/zingl_line3d.c`) on every 3-D trial here, so the
 even-`D` story is not an artefact of reimplementation.
 
 +++
@@ -507,7 +506,7 @@ direction).
 
 ## 7. Side-by-side summary of the mechanisms
 
-| | ours / `_line` | Rust / Zingl | ITK Index→Index |
+| | ours / `_line` | Zingl | ITK Index→Index |
 | --- | --- | --- | --- |
 | Major advance | unconditional | same pattern as minors (`d = D` always fires) | unconditional |
 | Initial minor error | `2d − D` | `D // 2` | `0`, then `+= 2d` before test |
@@ -571,15 +570,15 @@ tie-breaking story above.
 
 ## 9. What not to do
 
-Do not “fix” `_bresenham_nd` to match ITK or Rust in order to clear a
+Do not “fix” `_bresenham_nd` to match ITK or Zingl in order to clear a
 diff. That would break identity with `_line` / Pillow / the 2-D Bresenham
 documented in `on_lines.md`. If an N-D API must match ITK voxel traversal,
 expose it as a separate method and document the float `LastIndex` step.
 
-Do not treat raster_geometry or `line_drawing` as buggy for disagreeing:
-they implement Zingl’s published N-D form, including its even-`D` halves.
+Do not treat raster_geometry as buggy for disagreeing: it implements
+Zingl’s published N-D form, including its even-`D` halves.
 
-Do not use raw ITK Index→Index, Rust, or raster_geometry as
+Do not use raw ITK Index→Index, Zingl, or raster_geometry as
 **bit-identical** regression oracles for an early-step `_bresenham_nd`.
 Section 10 says what to use instead.
 
@@ -603,7 +602,7 @@ negative check that the Zingl rule was not adopted by mistake.
 4. **Checked-in fixtures** from (3), so CI need not ship ITK.
 5. **Negative:** on a fixed even-`D` set, sequences **differ** from Zingl.
 
-Skip as equality oracles: Rust / raster_geometry, ITK’s float `LastIndex`
+Skip as equality oracles: Zingl / raster_geometry, ITK’s float `LastIndex`
 path, and OpenCV (tie rule differs from `_line` / Pillow).
 
 ### 10.1 Spec in pure Python (docstring as oracle)
@@ -799,7 +798,7 @@ even_D = [
     if max(abs(a[0] - b[0]), abs(a[1] - b[1])) % 2 == 0
 ]
 # Must not be identical to Zingl on every even-D segment.
-zingl_same = sum(ours(a, b) == rust_nd(a, b) for a, b in even_D)
+zingl_same = sum(ours(a, b) == zingl_nd(a, b) for a, b in even_D)
 differ = len(even_D) - zingl_same
 print(f"even-D segments that differ from Zingl: "
       f"{differ}/{len(even_D)} ({differ / len(even_D):.1%})")
@@ -830,12 +829,13 @@ binary”.
 | Claim | Evidence |
 | --- | --- |
 | ours ≡ `_line` in 2-D | full ±7 box at Cython bring-up |
-| ours ≠ Rust/Zingl on ties | 100% agree when `D` odd; ~40% when `D` even (±3 box) |
-| Cause of Rust gap | `D//2` init and `err < 0` vs `2d − D` and `error ≥ 0` |
+| ours ≠ Zingl on ties | 100% agree when `D` odd; ~40% when `D` even (±3 box) |
+| Cause of Zingl gap | `D//2` init and `err < 0` vs `2d − D` and `error ≥ 0` |
 | ours ≠ ITK on ties | 100% agree when `LastIndex == Δ`; all misses are distortions |
 | Cause of ITK gap | Index API normalises a float direction before the integer walker |
 | How to test anyway | §10: spec, ITK integer walker, Pillow, invariants, anti-Zingl |
 
 Fixtures for these corpora live under `bresenham_nd_fixtures/`. Measured with
-the local `bresenham_nd_local` Cython build, Rust `line_drawing` 1.0.1, ITK
-algorithm from `itkBresenhamLine.hxx` v5.4.0 (Python port).
+the local `bresenham_nd_local` Cython build, Zingl’s `plotLine3d`
+(`bresenham_nd_fixtures/zingl_line3d.c`), ITK algorithm from
+`itkBresenhamLine.hxx` v5.4.0 (Python port).

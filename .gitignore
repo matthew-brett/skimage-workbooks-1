@@ -17,7 +17,10 @@ _build/
 # Cython products from notebook-local modules
 *.so
 *.pyd
-bresenham_nd_local/*.c
+notebooks/bresenham_nd_local/*.c
+
+# Compiled from bresenham_nd_fixtures/zingl_line3d.c
+notebooks/bresenham_nd_fixtures/zingl_line3d
 
 # Optional local link to the pyenv env (not required; see README)
 .venv

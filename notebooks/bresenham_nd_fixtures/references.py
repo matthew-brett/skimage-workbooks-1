@@ -1,9 +1,10 @@
 """Reference Bresenham walkers used to regenerate fixture JSON.
 
-These are pure Python ports. They do not need ITK wheels or a Rust toolchain.
-`zingl_line` matches `raster_geometry.bresenham_line` and Rust
-`line_drawing::Bresenham3d` on the checked-in 3-D corpus. `itk_line` follows
-`itkBresenhamLine.hxx` from ITK v5.4.0 (Index→Index via float Normalize).
+These are pure Python ports. They do not need ITK wheels or a C toolchain.
+`zingl_line` matches `raster_geometry.bresenham_line` and Zingl's own
+`plotLine3d` (`zingl_line3d.c`) on the checked-in 3-D corpus. `itk_line`
+follows `itkBresenhamLine.hxx` from ITK v5.4.0 (Index→Index via float
+Normalize).
 """
 
 from __future__ import annotations
@@ -12,7 +13,7 @@ import numpy as np
 
 
 def zingl_line(coord_a, coord_b, endpoint: bool = True):
-    """Zingl / raster_geometry / line_drawing style (late step on ties).
+    """Zingl / raster_geometry style (late step on ties).
 
     Faithful to ``raster_geometry.bresenham_line`` (including ``steps = -1``
     when an axis has zero delta; those axes never fire because their error

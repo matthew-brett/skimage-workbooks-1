@@ -1684,10 +1684,10 @@ for u, v in differ:
 
 [ITK's `BresenhamLine`](https://examples.itk.org/src/core/common/bresenhamline/documentation)
 is templated over dimension, and is the closest thing to a reference N-D
-implementation in an imaging library. Rust's
-[`line_drawing`](https://docs.rs/line_drawing/latest/line_drawing/struct.Bresenham3d.html)
-crate exposes `Bresenham3d` alongside `XiaolinWu` and `Supercover`, naming each
-by its algorithm. OpenCV and Pillow are 2-D only.
+implementation in an imaging library. Alois Zingl's published
+[`plotLine3d`](http://members.chello.at/~easyfilter/bresenham.c) is the
+common ancestor of several 3-D-only ports (see `bresenham_nd_cython.md`'s
+mechanism-A discussion). OpenCV and Pillow are 2-D only.
 
 One warning about the literature: "3-D Bresenham" names **two** different
 things. Some implementations use integer error terms, as above. Others set
