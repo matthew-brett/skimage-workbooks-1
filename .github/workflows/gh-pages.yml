@@ -1,0 +1,77 @@
+name: Build and publish to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: build_requirements.txt
+
+      # mystmd's book-theme is a Node/npm site under the hood.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      # Downloaded/built theme (_build/templates) rarely changes between
+      # mystmd versions; keyed on the pin in build_requirements.txt.
+      - name: Cache myst theme
+        uses: actions/cache@v4
+        with:
+          path: _build/templates
+          key: myst-templates-${{ hashFiles('build_requirements.txt') }}
+
+      # Per-notebook execution outputs are content-addressed, so restoring
+      # a cache from an older commit is always safe: unchanged notebooks
+      # hit, changed ones just re-execute. Keying on notebook content gives
+      # an exact cache hit (no redundant restore/save) on commits that don't
+      # touch notebooks at all; restore-keys covers commits that do.
+      - name: Cache myst execution
+        uses: actions/cache@v4
+        with:
+          path: |
+            _build/execute
+            _build/cache
+          key: myst-execute-${{ hashFiles('notebooks/**') }}
+          restore-keys: |
+            myst-execute-
+
+      - name: Install build requirements
+        run: pip install -r build_requirements.txt
+
+      - name: Build site
+        run: make html
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _build/html
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

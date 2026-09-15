@@ -9,6 +9,8 @@
 #
 # MYST is the mystmd CLI (an npm package), resolved from PATH like PYTHON.
 
+SHELL := bash
+
 PYTHON ?= python
 MYST ?= myst
 CC ?= gcc
@@ -17,11 +19,10 @@ BUILD_DIR = _build/html
 FIXTURES_DIR = notebooks/bresenham_nd_fixtures
 ZINGL_BIN = $(FIXTURES_DIR)/zingl_line3d
 
-.PHONY: help html book github clean rm-ipynb bresenham-fixtures kernel
+.PHONY: help html book clean rm-ipynb bresenham-fixtures kernel
 
 help:
 	@echo "make html      build the site, warnings as errors"
-	@echo "make github    build and publish to GitHub Pages"
 	@echo "make clean     remove _build and the paired .ipynb files"
 	@echo "make bresenham-fixtures   regenerate bresenham_nd_fixtures/*.json"
 
@@ -42,8 +43,8 @@ html: kernel $(ZINGL_BIN)
 # `book` is an alias for `html`, kept because the notebooks refer to it.
 book: html
 
-github: html
-	ghp-import -n $(BUILD_DIR) -p -f
+# GitHub Pages publishing is handled by .github/workflows/gh-pages.yml
+# (actions/upload-pages-artifact + actions/deploy-pages), not this Makefile.
 
 clean: rm-ipynb
 	rm -rf _build
