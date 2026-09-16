@@ -25,11 +25,16 @@ help:
 	@echo "make html      build the site, warnings as errors"
 	@echo "make clean     remove _build and the paired .ipynb files"
 	@echo "make bresenham-fixtures   regenerate bresenham_nd_fixtures/*.json"
+	@echo "make environment.yml   regenerate the conda environment file"
 
 # Registers the "python3" kernelspec the notebooks ask for, pointing at
 # $(PYTHON); installing ipykernel does not register it on its own.
 kernel:
 	$(PYTHON) -m ipykernel install --user --name python3
+
+# Kept in sync with build_requirements.txt by a pre-commit hook.
+environment.yml: build_requirements.txt
+	@$(PYTHON) make_environment_yml.py $< -o $@
 
 # The 3-D cross-check in bresenham_nd_cython.md shells out to this binary.
 $(ZINGL_BIN): $(FIXTURES_DIR)/zingl_line3d.c
@@ -40,6 +45,9 @@ html: kernel $(ZINGL_BIN)
 	if compgen -G "notebooks/*.ipynb" 2> /dev/null; then \
 	  (echo "ipynb files" && exit 1); fi
 	$(MYST) build --html --strict --execute
+
+github-pages:
+	@BASE_URL=/skimage-workbooks $(MAKE) html
 
 # `book` is an alias for `html`, kept because the notebooks refer to it.
 book: html

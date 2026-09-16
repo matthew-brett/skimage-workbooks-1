@@ -1,0 +1,10 @@
+# See https://pre-commit.com; enable with `pre-commit install`.
+repos:
+  - repo: local
+    hooks:
+      - id: environment-yml
+        name: regenerate environment.yml from build_requirements.txt
+        entry: make environment.yml
+        language: system
+        pass_filenames: false
+        files: ^(build_requirements\.txt|environment\.yml)$

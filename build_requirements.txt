@@ -4,6 +4,9 @@ ipykernel
 jupyter-server
 
 # Imported by the notebooks.
+# setuptools provides the `distutils` shim pyximport needs; the stdlib
+# module was removed in Python 3.12.
+setuptools
 numpy
 scipy
 scikit-image@git+https://github.com/scikit-image/scikit-image@main
