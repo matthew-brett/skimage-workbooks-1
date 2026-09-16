@@ -54,8 +54,41 @@ jobs:
           restore-keys: |
             myst-execute-
 
+      # scikit-image is installed from git main, which means a slow source
+      # build. Cache the wheel, keyed on the upstream commit, so the build
+      # only happens when main moves. Once scikit-image publishes nightly
+      # wheels, replace the three steps below, and the grep filter under
+      # "Install build requirements", with:
+      #
+      #   pip install --pre --upgrade \
+      #     --extra-index-url https://pypi.anaconda.org/scientific-python-nightly-wheels/simple \
+      #     scikit-image
+
+      - name: Resolve scikit-image main
+        id: skimage
+        run: |
+          sha=$(git ls-remote https://github.com/scikit-image/scikit-image.git main | cut -f1)
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+
+      - name: Cache scikit-image wheel
+        id: skimage-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/skimage-wheel
+          key: skimage-wheel-${{ runner.os }}-py3.13-${{ steps.skimage.outputs.sha }}
+
+      - name: Build scikit-image wheel
+        if: steps.skimage-cache.outputs.cache-hit != 'true'
+        run: |
+          pip wheel --no-deps -w ~/.cache/skimage-wheel \
+            "scikit-image@git+https://github.com/scikit-image/scikit-image@${{ steps.skimage.outputs.sha }}"
+
+      # The git requirement is dropped here; the line above supplies it as a
+      # prebuilt wheel, and a VCS requirement would rebuild it regardless.
       - name: Install build requirements
-        run: pip install -r build_requirements.txt
+        run: |
+          grep -v '^scikit-image@git' build_requirements.txt > /tmp/requirements.txt
+          pip install -r /tmp/requirements.txt ~/.cache/skimage-wheel/*.whl
 
       - name: Build site
         run: make github-pages
