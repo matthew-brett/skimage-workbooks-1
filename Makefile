@@ -45,6 +45,9 @@ html: kernel $(ZINGL_BIN)
 	if compgen -G "*.ipynb" 2> /dev/null; then (echo "ipynb files" && exit 1); fi
 	$(MYST) build --html --strict --execute
 
+github-pages:
+	@BASE_URL=/skimage-workbooks $(MAKE) html
+
 # `book` is an alias for `html`, kept because the notebooks refer to it.
 book: html
 
