@@ -1,0 +1,21 @@
+name: skimage-workbooks
+channels:
+  - conda-forge
+dependencies:
+  - python
+  - mystmd
+  - ipykernel
+  - jupyter-server
+  - setuptools
+  - numpy
+  - scipy
+  - pooch
+  - matplotlib
+  - pillow
+  - pandas
+  - tabulate
+  - cython
+  - pip
+  - pip:
+      - "scikit-image@git+https://github.com/scikit-image/scikit-image@main"
+      - "opencv-python-headless"
